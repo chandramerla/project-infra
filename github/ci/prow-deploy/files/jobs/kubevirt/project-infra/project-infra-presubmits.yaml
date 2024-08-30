@@ -422,13 +422,6 @@ presubmits:
               ./publish_multiarch_image.sh -b pr-creator quay.io kubevirtci
           securityContext:
             privileged: true
-          resources:
-            requests:
-              memory: "16Gi"
-              cpu: "500m"
-            limits:
-              memory: "16Gi"
-              cpu: "500m"
   - name: build-vm-image-builder-image
     always_run: false
     run_if_changed: "images/bootstrap/.*"
