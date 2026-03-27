@@ -130,6 +130,35 @@ cat_gcs_file() {
     fi
 }
 
+# Function to read GCS file content with retry mechanism
+# Usage: cat_gcs_file_with_retry <bucket_name> <gcs_file_path> <auth> [max_retries] [retry_interval]
+cat_gcs_file_with_retry() {
+    local bucket_name="$1"
+    local gcs_file_path="$2"
+    local auth="$3"
+    local max_retries="${4:-5}"
+    local retry_interval="${5:-5}"
+    local retry_count=0
+    local content
+
+    while [ "$retry_count" -lt "$max_retries" ]; do
+        content=$(cat_gcs_file "$bucket_name" "$gcs_file_path" "$auth")
+        if [ $? -eq 0 ] && [ -n "$content" ]; then
+            echo "$content"
+            return 0
+        else
+            retry_count=$((retry_count + 1))
+            if [ "$retry_count" -lt "$max_retries" ]; then
+                echo "Retry $retry_count/$max_retries in ${retry_interval}s..." >&2
+                sleep "$retry_interval"
+            else
+                echo "Failed after $max_retries attempts" >&2
+                return 1
+            fi
+        fi
+    done
+}
+
 # Function to delete a file from GCS
 rm_gcs_file() {
     local bucket_name="$1"
