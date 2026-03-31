@@ -166,16 +166,26 @@ rm_gcs_file() {
 
     auth_header=$(get_auth_header) || exit 1
 
-    delete_response=$(curl -s -X DELETE \
+    local temp_file=$(mktemp)
+    http_code=$(curl -s -w "%{http_code}" -o "$temp_file" -X DELETE \
       -H "$auth_header" \
       "${BASE_URL}/storage/v1/b/$bucket_name/o/$gcs_file_path")
+    
+    delete_response=$(cat "$temp_file")
+    rm -f "$temp_file"
 
-    if [ -z "$delete_response" ]; then
-        echo "File $gcs_file_path deleted successfully."
+    if [ "$http_code" = "204" ]; then
+        echo "File $gcs_file_path deleted successfully (HTTP $http_code)."
+        return 0
+    elif [ "$http_code" = "404" ]; then
+        echo "File $gcs_file_path not found (already deleted, HTTP $http_code)."
         return 0
     else
-        echo "Failed to delete file. Response:"
-        echo "$delete_response" | jq '.'
+        echo "ERROR: Failed to delete $gcs_file_path. HTTP Status: $http_code" >&2
+        if [ -n "$delete_response" ]; then
+            echo "Response:" >&2
+            echo "$delete_response" | jq '.' 2>/dev/null || echo "$delete_response" >&2
+        fi
         return 1
     fi
 }
